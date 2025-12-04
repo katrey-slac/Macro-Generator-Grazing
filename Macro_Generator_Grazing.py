@@ -125,6 +125,10 @@ def create_macro_file():
 
     # Retrieve values from the input fields
     macro_name = macro_name_var.get()
+    home_directory = home_directory_var.get()
+    data_folder = data_folder_var.get()
+    print(macro_name)
+    print(data_folder)
     exposure_time = exposure_time_var.get()
     sleep_time = sleep_time_var.get()
     num_images = num_images_var.get()
@@ -137,12 +141,9 @@ def create_macro_file():
     theta = theta_var.get()
 
 
-    # base_Dir = home_directory_var.get()+ "\\" + data_folder_var.get()
-    spec_baseDir = (home_directory_var.get() + "\\" + data_folder_var.get()).replace("\\", "/")
-
-    spec_baseDir = Path(spec_baseDir)
-    spec_baseDir = Path(*spec_baseDir.parts[2:])
-    spec_baseDir = "/" + spec_baseDir.as_posix()
+    spec_dir = Path(home_directory)
+    spec_dir = Path(*spec_dir.parts[2:])
+    spec_dir = spec_dir.as_posix()
 
     cameras = {
         "bottom": bottom_camera_var,
@@ -157,23 +158,23 @@ def create_macro_file():
 
     detector_map = axs_mapping = {
     "SAXS": [
-        'unix(sprintf("mkdir -p %s/SAXS", pilatus_baseDir2))',
+        'unix(sprintf("mkdir -p %s/SAXS", pilatus_baseDir))',
         'pd enable # Enable SAXS 1M detector',
-        'eval(sprintf("pd savepath %s/SAXS", pilatus_baseDir2))',
+        'eval(sprintf("pd savepath %s/SAXS", pilatus_baseDir))',
         'pd save # save SAXS data',
         'pd disable  # Disable SAXS detector after scan'
     ],
     "WAXS": [
-        'unix(sprintf("mkdir -p %s/WAXS", pilatus_baseDir2))',
+        'unix(sprintf("mkdir -p %s/WAXS", pilatus_baseDir))',
         'pdw enable #Enable WAXS detector',
-        'eval(sprintf("pd savepath %s/WAXS", pilatus_baseDir2))',
+        'eval(sprintf("pd savepath %s/WAXS", pilatus_baseDir))',
         'pdw save	# save WAXS data',
         'pdw disable  # Disable WAXS detector after scan'
     ],
     "Both": [
-        'unix(sprintf("mkdir -p %s/SAXS %s/WAXS", pilatus_baseDir2, pilatus_baseDir2))',
+        'unix(sprintf("mkdir -p %s/SAXS %s/WAXS", pilatus_baseDir, pilatus_baseDir))',
         'pd enable # Enable SAXS 1M detector \n                 pdw enable #Enable WAXS detector',
-        'eval(sprintf("pd savepath %s/SAXS", pilatus_baseDir2)) \n                  eval(sprintf("pdw savepath %s/WAXS", pilatus_baseDir2))',
+        'eval(sprintf("pd savepath %s/SAXS", pilatus_baseDir)) \n                  eval(sprintf("pdw savepath %s/WAXS", pilatus_baseDir))',
         'pd save # save SAXS data \n                    pdw save	# save WAXS data',
         'pd disable  # Disable SAXS detector after scan \n                  pdw disable  # Disable WAXS detector after scan'
     ]
@@ -185,7 +186,7 @@ def create_macro_file():
         dark_frame_block = f"""
         sclose
         sleep({sleep_time})
-        data_dir = sprintf("dark_run%d", run_ctr)  # No trailing '/'
+        data_dir = sprintf("dark_run%d_loop%d", run_ctr, loop_ctr)  # No trailing '/'
         p data_dir
 
         p "Taking data"
@@ -194,13 +195,13 @@ def create_macro_file():
 
         {detector_map.get(AXS_var.get(), [])[1]}
 
-        eval(sprintf("newfile %s/%s", spec_baseDir, data_dir))
+        eval(sprintf("newfile %s/%s", pilatus_baseDir, data_dir))
         {detector_map.get(AXS_var.get(), [])[2]}
 
         {detector_map.get(AXS_var.get(), [])[3]}
 
         # Take the actual data
-        eval(sprintf("loopscan %d %f %f", dark_num_images, dark_exposure, wait_time))
+        eval(sprintf("loopscan %d %d %d", dark_num_images, dark_exposure, wait_time))
 
         {detector_map.get(AXS_var.get(), [])[4]}
         # Implement sleep time between scans if required
@@ -234,10 +235,10 @@ sample_name = "{f'{sample_name}-theta{theta}' if theta !="" else f'{sample_name}
 #File name and location
 ############################
 
-spec_baseDir = "{spec_baseDir + "/"}" # Trailing '/' required
+cd ~/data
+cd {spec_dir}
 
-pilatus_baseDir2 = sprintf("%s", spec_baseDir) 
-#~/data/%s
+pilatus_baseDir = "{data_folder}"
 
 rock no
 loop_ctr = 0
@@ -248,7 +249,7 @@ loop_ctr = 0
 run_ctr += 1  # Increment global run counter to prevent accidental deletion
 
 # Execute directory creation using Linux based commands
-unix(sprintf("mkdir -p %s", pilatus_baseDir2))
+unix(sprintf("mkdir -p %s", pilatus_baseDir))
 {detector_map.get(AXS_var.get(), [])[0]}
 
 ##############
@@ -279,13 +280,13 @@ for (loop_ctr=0; loop_ctr < num_loops; loop_ctr++) {{
 
     {detector_map.get(AXS_var.get(), [])[1]}
 
-    eval(sprintf("newfile %s/%s", spec_baseDir, data_dir))
+    eval(sprintf("newfile %s/%s", pilatus_baseDir, data_dir))
     {detector_map.get(AXS_var.get(), [])[2]}
 
     {detector_map.get(AXS_var.get(), [])[3]}
 
     #Take the actual data
-    eval(sprintf("loopscan %d %f %f", num_images, exposure_time, wait_time))
+    eval(sprintf("loopscan %d %d %d", num_images, exposure_time, wait_time))
 
     {detector_map.get(AXS_var.get(), [])[4]}
     
@@ -299,6 +300,7 @@ for (loop_ctr=0; loop_ctr < num_loops; loop_ctr++) {{
     
 }}
 { f'umv th 0' if theta !="" else '' }
+cd ~/data
 """
 
     file_path = f"{home_directory_var.get()}/{macro_name}.txt"
