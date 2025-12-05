@@ -275,8 +275,6 @@ for (loop_ctr=0; loop_ctr < num_loops; loop_ctr++) {{
     # Create directories for SAXS and WAXS and save data in those
     #############################################################################
     p "Taking data"
-    
-    wait_time = 0
 
     {detector_map.get(AXS_var.get(), [])[1]}
 
